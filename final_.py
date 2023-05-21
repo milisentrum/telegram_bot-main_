@@ -7,10 +7,14 @@ from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 import aiogram.utils.markdown as md
 from aiogram.types import ParseMode
+from queue_database import database as db
 from queue_database.database import *
 from formatted import *
 from simulator import *
 from functional import *
+
+db = db_path
+# print(db_path) - /Users/ketra/Desktop/telegram_bot-main/queue_database/cstmrs.db
 
 logging.basicConfig(level=logging.INFO)
 API_TOKEN = "6289556666:AAGpinAWZMv3AaI3pNOk4s79_pFLP3jpV0E"
@@ -41,7 +45,6 @@ async def start_command(message: types.Message):
 
     # await test_loop(con)
 
-
     # Send a message with the button menu
     await message.reply(
         "Привет!\nЯ бот для огрганизации очереди. Выберите вариант:",
@@ -49,9 +52,16 @@ async def start_command(message: types.Message):
         reply_markup=menu,
     )
 
-
 @dp.message_handler(lambda message: message.text == "Регистрация")
 async def process_button1(message: types.Message):
+    user_id = message.chat.id
+    if not await is_id_unique('customers', user_id):  # Check if the user is already registered
+        await bot.send_message(user_id, "Вы не можете пройти регистрацию дважды")
+        # Send the user's current position in the queue
+        # position = await get_queue_position(user_id)  # Assuming you have a function to get a user's position
+        # await bot.send_message(user_id, f"Your current position in the queue is {position}.")
+        return  # Exit the function if the user is already registered
+
     ReplyKeyboardRemove()
     await Form.name.set()
     await message.reply(
@@ -67,14 +77,9 @@ async def process_name(message: types.Message, state: FSMContext):
     await Form.next()
     await message.reply("Какой у вас возраст?")
 
-
 @dp.message_handler(lambda message: not message.text.isdigit(), state=Form.age)
 async def process_age_invalid(message: types.Message):
-    """
-    If age is invalid
-    """
     return await message.reply("Нужно ввести число.\nКакой у вас возраст?")
-
 
 @dp.message_handler(lambda message: message.text.isdigit(), state=Form.age)
 async def process_age(message: types.Message, state: FSMContext):
@@ -87,14 +92,9 @@ async def process_age(message: types.Message, state: FSMContext):
 
     await message.reply("Ваш пол?", reply_markup=markup)
 
-
 @dp.message_handler(lambda message: message.text not in ["М", "Ж"], state=Form.gender)
 async def process_gender_invalid(message: types.Message):
-    """
-    In this example gender has to be one of: Male, Female, Other.
-    """
     return await message.reply("Мы поддерживаем только два пола в данный момент. Выберите пол из клавиатуры.")
-
 
 @dp.message_handler(state=Form.gender)
 async def process_gender(message: types.Message, state: FSMContext):
@@ -102,21 +102,15 @@ async def process_gender(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['gender'] = message.text
 
-
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
     markup.add("низкий", "средний", "высокий")
 
     await message.reply("Как бы вы оценили ваш уровень спешки?", reply_markup=markup)
 
-
 @dp.message_handler(lambda message: message.text not in ["низкий", "средний", "высокий"], state=Form.priority)
 async def process_priority_invalid(message: types.Message):
-    """
-    In this example gender has to be one of: Male, Female, Other.
-    """
     return await message.reply("Мы поддерживаем только предложенные уровни спешки в данный момент\n"
                                "Выберите другой уровень из клавиатуры.")
-
 
 @dp.message_handler(state=Form.priority)
 async def process_priority(message: types.Message, state: FSMContext):
@@ -127,15 +121,10 @@ async def process_priority(message: types.Message, state: FSMContext):
     await Form.next()
     await message.reply("Сколько времени вы готовы ждать?(в минутах)")
 
-
 @dp.message_handler(lambda message: not message.text.isdigit(), state=Form.allowed_waiting_time)
 async def process_allowed_waiting_time_invalid(message: types.Message):
-    """
-    If age is invalid
-    """
     return await message.reply("Нужно ввести число.\n"
                                "Сколько времени вы готовы ждать?(в минутах)")
-
 
 @dp.message_handler(lambda message: message.text.isdigit(), state=Form.allowed_waiting_time)
 async def process_allowed_waiting_time(message: types.Message, state: FSMContext):
@@ -169,7 +158,6 @@ async def process_allowed_waiting_time(message: types.Message, state: FSMContext
 
     await state.finish()
 
-
 @dp.message_handler(lambda message: message.text == "Просмотр очереди")
 async def process_button2(message: types.Message):
     queue_list = await customer_query(True, 'name', 'time_arrive')
@@ -184,7 +172,6 @@ async def process_button2(message: types.Message):
         md.text('\nModified order:\n', queue_format(arr)),
         sep='\n',)
     )
-
 
 @dp.message_handler(lambda message: message.text == "Обновление параметров")
 async def process_button3(message: types.Message):
@@ -202,29 +189,31 @@ async def process_button3(message: types.Message):
         reply_markup=update_menu,
     )
 
-
 @dp.message_handler(lambda message: message.text == "Я хочу уйти, не дожидаясь своей очереди")
 async def process_button4(message: types.Message):
-    await update(message.chat.id, premature_departure=True)
+    user_id = message.chat.id
+    if not await db.is_id_unique('customers', user_id):
+        await bot.send_message(user_id, 'Вы не можете уйти из очереди без регистрации в ней.')
+        return
+    await db.update(user_id, premature_departure=True)
     await message.reply(
         md.text("Вы исключены из очереди"),
         reply=False,
     )
 
-
 @dp.message_handler(lambda message: message.text == "Я хочу прийти через n минут")
 async def process_button5(message: types.Message):
+    user_id = message.chat.id
+    if not await db.is_id_unique('customers', user_id):
+        await bot.send_message(user_id, 'Вы не можете обновить настройки без регистрации в очереди.')
+        return
     await Form.suspend.set()
     return await message.reply("Через какое время вы вернетесь?(в минутах)")
 
 
 @dp.message_handler(lambda message: not message.text.isdigit(), state=Form.suspend)
 async def process_suspend_invalid(message: types.Message):
-    """
-    If age is invalid
-    """
     return await message.reply("Нужно ввести число.\nЧерез какое время вы вернетесь?(в минутах)")
-
 
 @dp.message_handler(lambda message: message.text.isdigit(), state=Form.suspend)
 async def process_suspend(message: types.Message):
@@ -244,6 +233,7 @@ if __name__ == "__main__":
 
 
 # 1. добавить в клавиатуру то, что чел не может уйти из очереди не зарегавшись в ней, а также возможность вернуться в главное меню после прохода в другие пункты
+# клава не исчезает в процессе регистрации на моментах когда она не нужна
 # 2. также убрать клавиатуру после регистрации чтобы просмотреть текущую очередь или ливнуть из очереди
 # 3. добавить возможность отменить регистрацию при прохождении регистрации
 # 4. добавить чекинг того что данный пользователь не был зареган до этого
