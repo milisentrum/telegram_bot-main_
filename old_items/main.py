@@ -3,7 +3,7 @@ from telebot import types
 from queue_database.database import insert, clients, Client, update, setup_database
 from queue_ import user_queue
 from datetime import datetime
-from keyboard import main_keyboard, gender_keyboard, post_registration_keyboard, priority_keyboard
+from old_items.keyboard import main_keyboard, gender_keyboard, post_registration_keyboard, priority_keyboard
 
 con = setup_database()
 

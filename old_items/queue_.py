@@ -3,7 +3,7 @@ import sqlite3 as sl
 import os
 
 def user_queue(message):
-    db_path = os.path.join(os.path.dirname(__file__), 'queue_database', 'cstmrs.db')
+    db_path = os.path.join(os.path.dirname(__file__), '../queue_database', 'cstmrs.db')
     con = sl.connect(db_path)
 
     dat = con.execute("SELECT * FROM customers")

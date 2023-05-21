@@ -1,6 +1,6 @@
 from queue_database.database import setup_database
 import threading
-from main import bot
+from old_items.main import bot
 from simulator import test_loop, display_current_rows
 
 con = setup_database()
