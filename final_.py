@@ -36,21 +36,14 @@ inv_priority_level_dict = {v: k for k, v in priority_level_dict.items()}
 
 @dp.message_handler(commands=["start", "help"])
 async def start_command(message: types.Message):
-    menu = ReplyKeyboardMarkup(resize_keyboard=True)
-    reg = KeyboardButton("Регистрация")
-    queue = KeyboardButton("Просмотр очереди")
-    update = KeyboardButton("Обновление параметров")
+    menu = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    reg = types.KeyboardButton("Регистрация")
+    queue = types.KeyboardButton("Просмотр очереди")
+    update = types.KeyboardButton("Обновление параметров")
     menu.add(reg, queue)
     menu.add(update)
+    await message.reply("Привет! Я бот для огрганизации очереди. Выберите вариант:", reply=False, reply_markup=menu)
 
-    # await test_loop(con)
-
-    # Send a message with the button menu
-    await message.reply(
-        "Привет!\nЯ бот для огрганизации очереди. Выберите вариант:",
-        reply=False,
-        reply_markup=menu,
-    )
 
 @dp.message_handler(lambda message: message.text == "Регистрация")
 async def process_button1(message: types.Message):
@@ -62,12 +55,9 @@ async def process_button1(message: types.Message):
         # await bot.send_message(user_id, f"Your current position in the queue is {position}.")
         return  # Exit the function if the user is already registered
 
-    ReplyKeyboardRemove()
+    await message.reply("Напишите своё имя", reply=False, reply_markup=types.ReplyKeyboardRemove())
     await Form.name.set()
-    await message.reply(
-        "Напишите своё имя",
-        reply=False,
-    )
+
 
 
 @dp.message_handler(state=Form.name)
@@ -119,7 +109,8 @@ async def process_priority(message: types.Message, state: FSMContext):
         data['priority'] = priority_level_dict[message.text]
 
     await Form.next()
-    await message.reply("Сколько времени вы готовы ждать?(в минутах)")
+    await message.reply("Сколько времени вы готовы ждать?(в минутах)", reply=False, reply_markup=types.ReplyKeyboardRemove())
+
 
 @dp.message_handler(lambda message: not message.text.isdigit(), state=Form.allowed_waiting_time)
 async def process_allowed_waiting_time_invalid(message: types.Message):
