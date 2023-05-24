@@ -10,11 +10,6 @@ from typing import *
 clients = {}
 db_path = os.path.join(os.path.dirname(__file__), 'cstmrs.db')
 
-
-# async def setup_db():
-#     await create_tables()
-
-
 class Client:
     def __init__(self, chat_id, name, age, gender, priority, allowed_waiting_time,
                  time_arrive=datetime.datetime.now().strftime("%H:%M:%S"),
@@ -31,7 +26,6 @@ class Client:
         self.time_leave = time_leave
         self.time_transfer = time_transfer
         self.number_of_premature_leaves = number_of_premature_leaves
-
 
 class QClient:
     def __init__(self, chat_id, name, age, gender, priority, allowed_waiting_time,
@@ -52,7 +46,6 @@ class QClient:
         self.number_of_premature_leaves = number_of_premature_leaves
         self.queue=queue_num
 
-
 #TODO: Сделать объект базы данных c таблицей. Сохранение дампа базы внутри этой папки
 # Тут должен быть реализован метод загрузки в базу, в нужную таблицу данных из
 # класса clients. Который просто применяется потом в route телеграм бота
@@ -63,7 +56,6 @@ class QClient:
 def random_date():
     x = datetime.datetime.now() - datetime.timedelta(minutes=randrange(60))
     return x.strftime("%H:%M:%S")
-
 
 data_ = [
         (1234567890, 'Bob', 32, 'М', 1, 17, random_date(), None, None, 0),
@@ -85,7 +77,6 @@ data_ = [
         (9879879879, 'Sam', 47, 'М', 2, 43, random_date(), None, None,0),
         (3213213213, 'Tom', 30, 'М', 2, 19, random_date(), None, None,0),
         (6549873210, 'Vera', 25, 'Ж', 2, 35, random_date(), None, None,0)]
-    
 
 def generate_data(con):
     query_ = """INSERT INTO customers 
@@ -103,7 +94,6 @@ def generate_data(con):
                                    """
     con.executemany(query_, data_)
     con.commit()
-
 
 def create_tables():
     with sl3.connect(db_path, check_same_thread=False) as con:
@@ -128,14 +118,11 @@ def create_tables():
                 generate_data(con)
                 print("[DB]>>Queue generated")
 
-
-
 async def staff(client: Client):
     data = (client.chat_id, client.name, client.age, client.gender, client.priority,
             client.allowed_waiting_time, client.time_arrive, client.time_leave,
             client.time_transfer, client.number_of_premature_leaves)
     return data
-
 
 async def insert(client: Client):
     async with sl.connect(db_path, check_same_thread=False) as con:
@@ -146,49 +133,6 @@ async def insert(client: Client):
         await con.commit()
         print("[DB]>>New record added successfully")
 
-
-    #     test data
-    # data = [
-    #     (1234567890, 'Bob', 32, 'М', 1, '10:25:05', None, None),
-    #     (9876543210, 'Charlie', 27, 'М', 0, '16:50:23', None, None),
-    #     (2468135790, 'Diana', 45, 'Ж', 1, '12:35:45', None, None),
-    #     (1357924680, 'Eva', 29, 'Ж', 0, '09:15:12', None, None),
-    #     (3141592653, 'Frank', 38, 'М', 1, '18:10:55', None, None),
-    #     (2718281828, 'Grace', 19, 'Ж', 0, '20:05:32', None, None),
-    #     (1123581321, 'Henry', 55, 'М', 1, '15:30:00', None, None),
-    #     (2233445566, 'Iris', 22, 'Ж', 0, '11:45:16', None, None),
-    #     (4455667788, 'John', 42, 'М', 1, '07:55:03', None, None),
-    #     (9988776655, 'Kate', 24, 'Ж', 0, '13:40:27', None, None),
-    #     (7777777777, 'Leo', 50, 'М', 1, '16:25:18', None, None),
-    #     (9999999999, 'Mia', 31, 'Ж', 0, '22:20:11', None, None),
-    #     (1231231231, 'Nick', 36, 'М', 1, '19:15:51', None, None),
-    #     (4564564564, 'Olga', 28, 'Ж', 0, '08:30:42', None, None),
-    #     (7897897897, 'Peter', 43, 'М', 1, '14:55:33', None, None),
-    #     (6546546546, 'Rachel', 26, 'Ж', 0, '12:00:20', None, None),
-    #     (9879879879, 'Sam', 47, 'М', 1, '17:45:07', None, None),
-    #     (3213213213, 'Tom', 30, 'М', 0, '21:35:59', None, None),
-    #     (6549873210, 'Vera', 25, 'Ж', 1, '09:50:48', None, None)
-    # ]
-    # with con:
-    #     query = "INSERT INTO customers (id, name, age, gender, priority, time_arrive, " \
-    #             "time_leave, time_transfer) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    #     con.executemany(query, data)
-    #     con.commit()
-    #     print("New records added successfully")
-
-    # проверка уникальности айди чата
-    # with sl.connect('cstmrs.db') as con:
-    #     if is_id_unique(con, 'customers', chat_id):
-    #         con.execute("INSERT INTO customers (id, name, age, gender, is_hurry) values(?, ?, ?, ?, ?)", data)
-    #         con.commit()
-    #         print("New record added successfully")
-    #     else:
-    #         print("ID already exists")
-
-    # dat = con.execute("SELECT * FROM customers")
-    # for row in dat:
-    #     print(row)
-
 async def is_id_unique(table_name, id):
     async with sl.connect(db_path, check_same_thread=False) as con:
         # Execute a SELECT query to retrieve the IDs from the table
@@ -198,6 +142,7 @@ async def is_id_unique(table_name, id):
                 id_list.append(row[0])
         # Check if the ID being added already exists in the list
         return id not in id_list
+
 
 async def update(chat_id, leave_time=None, transfer_minutes=None, premature_departure=False):
     async with sl.connect(db_path, check_same_thread=False) as con:
@@ -227,7 +172,7 @@ async def update(chat_id, leave_time=None, transfer_minutes=None, premature_depa
                 print(row)
 
 
-async def customer_query(sort_dttm, *args):
+async def customer_query(sort_dttm=None, *args):
     async with sl.connect(db_path, check_same_thread=False) as con:
         if not args:
             columns = '*'

@@ -104,7 +104,7 @@ async def process_priority_invalid(message: types.Message):
 
 @dp.message_handler(state=Form.priority)
 async def process_priority(message: types.Message, state: FSMContext):
-    # await Form.next()
+
     async with state.proxy() as data:
         data['priority'] = priority_level_dict[message.text]
 
@@ -156,7 +156,8 @@ async def process_button2(message: types.Message):
     # queue_list is the first state, then we need to apply some logic on sorting, then transform by relaxation param
     ext = EXTimings()
     ext.fill_exams()
-    arr = ext.original_order(set_)
+    db_slice = await customer_query(sort_dttm=True)
+    arr = ext.original_order(db_slice)
 
     await bot.send_message(message.chat.id,md.text(
         md.text('\nOriginal order:\n', queue_format(queue_list)),
@@ -219,16 +220,19 @@ if __name__ == "__main__":
     logging.info("Starting bot...")
     create_tables()
     loop = asyncio.get_event_loop()
+    #Vynesti Extimings suda, otsuda lit's v basu dannikh sortirovku
     loop.create_task(test_loop())
     executor.start_polling(dp, skip_updates=True)
 
 
-# 1. добавить в клавиатуру то, что чел не может уйти из очереди не зарегавшись в ней, а также возможность вернуться в главное меню после прохода в другие пункты
-# клава не исчезает в процессе регистрации на моментах когда она не нужна
+# 1. добавить в клавиатуру возможность вернуться в главное меню после прохода в другие пункты
 # 2. также убрать клавиатуру после регистрации чтобы просмотреть текущую очередь или ливнуть из очереди
 # 3. добавить возможность отменить регистрацию при прохождении регистрации
-# 4. добавить чекинг того что данный пользователь не был зареган до этого
-# 5. если зарегался чел, не удалилась бд и он снова зарегался, то запись в бд идет, но отображения текущей очереди чел посмотреть не сможет
-# 6. меня сломалась кнопка "просмотр очереди" через бота, хз как починить
 # 7. modified order в боте не робит что-то, там нет пользователя который только добавился (если бд уже создана, т.е. регистрация идет не для первого чела в очереди), в другом случае еще не проверяла
 # бд заполняется пользователями при запуске бота
+
+
+# todo: после получения бд переделать сортировки. добавить функцию которая по спешке а внутри спешки по времени записи
+# todo: функцию которая добавляет отсортированные записи по спешке времени из буферного файла в свои категории спешки
+# это значит что есть таблица которая отсортирована алгом и таблица новых по спешке времени (дальше на записи)
+

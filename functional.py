@@ -1,7 +1,7 @@
 import datetime
 from datetime import timedelta
 import numpy as np
-
+from queue_database.database import *
 
 set_ = [(1234567890, 'Bob', 32, 'М', 1, 17, '15:46:29', None, None, 0),
 (9876543210, 'Charlie', 27, 'М', 3, 31, '15:49:29', None, '16:14:29', 0),
@@ -25,17 +25,27 @@ set_ = [(1234567890, 'Bob', 32, 'М', 1, 17, '15:46:29', None, None, 0),
 
 class EXTimings():
     def __init__(self, rate_per_hour=3.5, start_hour=10, end_hour=20):
+
         self.interval = 60/rate_per_hour
         self.now = datetime.datetime.now()
         self.start = datetime.datetime(self.now.year, self.now.month, self.now.day, start_hour, 0)
         self.end = datetime.datetime(self.now.year, self.now.month, self.now.day, end_hour, 0)
         self.exams = [self.start]
         self.closest_index = 0
+        self.queue_db = await customer_query(sort_dttm=True)
+
+    def count_time(self, ):
+        current_db=await customer_query()
+        self.queue_db.append(self.sort_nested(self.db_list_lsync(self.queue_db, current_db)))
+
+
+    def db_list_lsync(self, q_list:list, db_list:list):
+        return [db_item for q_item,db_item in zip(q_list, db_list) if q_item[0] != db_item[0]]
+
 
     def fill_exams(self, ):
         while self.exams[-1] +timedelta(days=0,seconds=self.interval*60,microseconds=0) < self.end:
             self.exams.append(self.exams[-1]+timedelta(seconds=self.interval*60))
-
 
     def get_nearest(self, ):
         i = 0
@@ -46,7 +56,6 @@ class EXTimings():
 
     def sort_nested(self, list_, ind=6):
         return sorted(list_, key=lambda x: x[ind])
-
 
     def original_order(self, list_):
         original_order = np.array(self.sort_nested([i for i in list_ if i[8] is None]))
@@ -80,3 +89,6 @@ class EXTimings():
 
 
 
+
+
+# todo: асинхронный while true lsync бд
