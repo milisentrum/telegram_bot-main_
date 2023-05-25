@@ -3,15 +3,16 @@ from random import randint, choice
 from datetime import datetime
 from queue_database.database import *
 
-
 async def display_current_rows(con):
     data = await con.execute("SELECT * FROM customers")
     async for row in data:
         print(row)
 
-
 async def test_loop():
     async with sl.connect(db_path, check_same_thread=False) as con:
+        print("Before changes:")
+        await display_current_rows(con)
+
         while True:
             action = randint(1, 3)
 

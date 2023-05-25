@@ -12,9 +12,10 @@ from queue_database.database import *
 from formatted import *
 from simulator import *
 from functional import *
+import threading
+import asyncio
 
 db = db_path
-# print(db_path) - /Users/ketra/Desktop/telegram_bot-main/queue_database/cstmrs.db
 
 logging.basicConfig(level=logging.INFO)
 API_TOKEN = "6289556666:AAGpinAWZMv3AaI3pNOk4s79_pFLP3jpV0E"
@@ -44,7 +45,6 @@ async def start_command(message: types.Message):
     menu.add(update)
     await message.reply("Привет! Я бот для огрганизации очереди. Выберите вариант:", reply=False, reply_markup=menu)
 
-
 @dp.message_handler(lambda message: message.text == "Регистрация")
 async def process_button1(message: types.Message):
     user_id = message.chat.id
@@ -57,8 +57,6 @@ async def process_button1(message: types.Message):
 
     await message.reply("Напишите своё имя", reply=False, reply_markup=types.ReplyKeyboardRemove())
     await Form.name.set()
-
-
 
 @dp.message_handler(state=Form.name)
 async def process_name(message: types.Message, state: FSMContext):
@@ -110,7 +108,6 @@ async def process_priority(message: types.Message, state: FSMContext):
 
     await Form.next()
     await message.reply("Сколько времени вы готовы ждать?(в минутах)", reply=False, reply_markup=types.ReplyKeyboardRemove())
-
 
 @dp.message_handler(lambda message: not message.text.isdigit(), state=Form.allowed_waiting_time)
 async def process_allowed_waiting_time_invalid(message: types.Message):
@@ -202,7 +199,6 @@ async def process_button5(message: types.Message):
     await Form.suspend.set()
     return await message.reply("Через какое время вы вернетесь?(в минутах)")
 
-
 @dp.message_handler(lambda message: not message.text.isdigit(), state=Form.suspend)
 async def process_suspend_invalid(message: types.Message):
     return await message.reply("Нужно ввести число.\nЧерез какое время вы вернетесь?(в минутах)")
@@ -215,14 +211,32 @@ async def process_suspend(message: types.Message):
     await bot.send_message(message.chat.id,
         md.text(f"Обновлены параметры записи:\nВы отойдёте на {message.text} минут"))
 
+def start_polling_with_new_event_loop(dp):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    executor.start_polling(dp, skip_updates=True)
+
+# if __name__ == "__main__":
+#     logging.info("Starting bot...")
+#     create_tables()
+#     ext = EXTimings()
+#     asyncio.run(ext.initialize())
+#     polling_thread = threading.Thread(target=start_polling_with_new_event_loop, args=(dp,))
+#     polling_thread.start()
+#     polling_thread.join()  # Wait for the thread to finish
+#     ext.stop()
 
 if __name__ == "__main__":
     logging.info("Starting bot...")
     create_tables()
     loop = asyncio.get_event_loop()
-    #Vynesti Extimings suda, otsuda lit's v basu dannikh sortirovku
+    ext = EXTimings()
+    loop.create_task(ext.initialize())
     loop.create_task(test_loop())
-    executor.start_polling(dp, skip_updates=True)
+    polling_thread = threading.Thread(target=start_polling_with_new_event_loop, args=(dp,))
+    polling_thread.start()
+    polling_thread.join()
+    ext.stop()
 
 
 # 1. добавить в клавиатуру возможность вернуться в главное меню после прохода в другие пункты
@@ -235,4 +249,26 @@ if __name__ == "__main__":
 # todo: после получения бд переделать сортировки. добавить функцию которая по спешке а внутри спешки по времени записи
 # todo: функцию которая добавляет отсортированные записи по спешке времени из буферного файла в свои категории спешки
 # это значит что есть таблица которая отсортирована алгом и таблица новых по спешке времени (дальше на записи)
-
+# то есть берем формально (не скль таблицу) а типа отделяем лист и делим на 2 части с уровнем спешки 3 и все что ниже
+# в этот уровень спешки 3 соединяем в конец append элемент 1й из. короче 3йки падать в конец 3, 2йки в конец 2к
+# и должны делать это по очереди пока есть какой-то буфер
+#
+# мы должны организовать. у нас есть бд мы из нее взяли данне в класс и в этом классе мы пытались сделать сортировку и в этот момент какая-то запись
+# долетела в базу, мы ее забрали к нам и ее нужно  добавить к алгоритму чтобы она сортировалась, могло прилететь 1 или несколько записей
+# чтобы добавить ее к сортировке нам бы хорошо ее добавить - влить и отсортировать по уровню спешки
+# но тогда у нас собьется предыдущая сортировка нашего алгоритма и мы так делать не можем
+# поэтому мы должны буферный файл достать - это уже сделано
+# только надо не только по времени сортировать а по спешке и времени
+# и дальше мы идем на первую запись этого буферного файла и допустим она там с таким-то уровнем спешки и мы ее к такому же уровню спешки
+# должны добавить но в конец
+# проще всего (но можно как угодно) чтобы добавиьт в конец троечку к троечке (3 самый выскокий уровень в системе)
+# взять элементы которые содержат 3ку и разъединить список в том месте (типа засунуть - разъединить. нужна отдельная функция. которая будет добавлять
+# в правильное место элемент относительно его спешки. т.е. функция должна разъединять лист и туда закидывать)
+#
+# берем формально отделяем лист и делим его на 2 части
+# с уровнем спешки 3
+# и все что ниже
+# в этот уровень спешки 3 снизу присоединяем
+#
+#
+# todo: в сортировке в самом боте (когда он отправляет сообщение с текущей очередью) - при добавлении нового пользователя кто-то из уже существующих не отображается. как будто там при отображении фиксированное количество записей из тестового датасета - 19
